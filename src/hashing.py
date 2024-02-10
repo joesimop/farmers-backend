@@ -21,3 +21,15 @@ def is_correct_password(salt: bytes, pw_hash: bytes, password: str) -> bool:
         pw_hash,
         hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100000)
     )
+
+def modify_for_database(bytes: bytes) -> str:
+    """
+    Convert a bytes object to a string that can be stored in the database.
+    """
+    return '\\x' + bytes.toString('hex')
+
+def modify_for_python(string: str) -> bytes:
+    """
+    Convert a string stored in the database to a bytes object.
+    """
+    return string[2:].encode('utf-8')

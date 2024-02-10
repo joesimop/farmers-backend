@@ -1,7 +1,7 @@
 from fastapi import FastAPI, exceptions
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
-from src.api import users
+from src.api import profile, community, communityspecific, guidelines
 import json
 import logging
 from starlette.middleware.cors import CORSMiddleware
@@ -22,7 +22,10 @@ app = FastAPI(
     },
 )
 
-app.include_router(users.router)
+app.include_router(profile.router)
+app.include_router(community.router)
+app.include_router(communityspecific.router)
+app.include_router(guidelines.router)
 # app.include_router(carts.router)
 # app.include_router(catalog.router)
 # app.include_router(bottler.router)
