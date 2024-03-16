@@ -216,6 +216,18 @@ def delete_guideline(guideline_id : int):
     try:
         with db.engine.begin() as conn:
 
+            #Update order numbers of guidelines after the about to be deleted guideline
+            conn.execute(
+                sqlalchemy.text(
+                    """
+                    UPDATE guidelines
+                    SET order_number = order_number - 1
+                    WHERE order_number > (SELECT order_number FROM guidelines WHERE id = :guideline_id)
+                    """
+                ), ({"guideline_id" : guideline_id})
+            )
+
+            #Delete the guideline
             conn.execute(
                 sqlalchemy.text(
                     """
@@ -224,6 +236,8 @@ def delete_guideline(guideline_id : int):
                     """
                 ), ({"guideline_id" : guideline_id})
             )
+
+            
 
     except DBAPIError as error:
 

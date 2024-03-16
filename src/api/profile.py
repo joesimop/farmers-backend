@@ -42,6 +42,47 @@ class CommunityRequest(BaseModel):
     submit_date: datetime.datetime
 
 
+
+@router.get("/community_profile/{c_id}/{profile_id}")
+def get_user_by_id(c_id: int, profile_id: int):
+    
+    try:
+        with db.engine.begin() as conn:
+            user = conn.execute(
+                sqlalchemy.text(
+                    """
+                    SELECT user_profiles.id, firstname, lastname, username, email, residingcity, joined, role
+                    FROM user_profiles
+                    JOIN roles ON user_profiles.id = roles.profile_id
+                    WHERE user_profiles.id = :profile_id AND roles.community_id = :c_id
+                    """
+                ), ({"profile_id": profile_id, "c_id": c_id})
+            ).first()
+
+    except DBAPIError as error:
+        print(error)
+        raise(HTTPException(status_code=500, detail="Database error"))
+    
+    if user is None:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    jsonObject = {
+        "id": user[0],
+        "firstname": user[1],
+        "lastname": user[2],
+        "username": user[3],
+        "email": user[4],
+        "residingcity": user[5],
+        "joined": user[6].isoformat(timespec="seconds"),
+        "role": user[7]
+    }
+
+    return JSONResponse(content=jsonObject, status_code=200)
+
+
 # Get endpoint to get a user by username
 @router.get("/{username}")
 def get_user_by_username(username: str):
