@@ -1,8 +1,9 @@
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import JSONResponse
-from psycopg2.errors import ForeignKeyViolation, UniqueViolation
+from psycopg2.errors import ForeignKeyViolation
 from typing import Optional
 from src.api.search import build_search_statements, expand_search_statements
+from src.order_by import user_sortable_endpoint, SortOption, SortDirection
 
 
 import sqlalchemy
@@ -467,7 +468,8 @@ def get_comments(c_id : int, post_id: int):
 
 
 @router.get("/search")
-def search_posts(c_id: int, username: str | None = None, body: str | None = None):
+@user_sortable_endpoint(SortOption.Date, SortOption.Pinned, SortOption.Username)
+def search_posts(c_id: int, username: str | None = None, body: str | None = None, sort_by: SortOption | None = SortOption.Date, sort_direction: SortDirection | None = SortDirection.Descending):
 
     #Create a dictionary of the search terms and their corresponding values.
     fieldDict = {
@@ -485,7 +487,7 @@ def search_posts(c_id: int, username: str | None = None, body: str | None = None
                     FROM posts
                     JOIN user_profiles ON posts.profile_id = user_profiles.id
                     WHERE community_id = :c_id {expand_search_statements(search_clauses)}
-                    ORDER BY timestamp DESC
+                    ORDER BY {sort_by} {sort_direction}
                     """
                 ), ({"c_id": c_id} | binds)
             ).fetchall()
