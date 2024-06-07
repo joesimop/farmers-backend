@@ -1,20 +1,16 @@
-
-import tensorflow as tf
-import torch
 from transformers import TFBertForSequenceClassification
 from transformers import BertTokenizer, pipeline
-from sklearn.model_selection import train_test_split
-
+import os, dotenv
 class Model:
     def __init__(self):
 
+        # NOTE THE MODEL IS ONLY LOCAL AND NOT ON THE REPO
         print("Loading model...")
-        self.model_path = "/Users/joesimop/Desktop/Bert/v2"
-        self.model = TFBertForSequenceClassification.from_pretrained(self.model_path)
+        dotenv.load_dotenv()
+        self.model = TFBertForSequenceClassification.from_pretrained("joesimop/rareconnect-text-classifier", token=os.environ.get("MODEL_TOKEN"))
         self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
         self.model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
         self.pipeline = pipeline('text-classification', model=self.model, tokenizer=self.tokenizer)
-        print("Model loaded!")
 
     def predict(self, text):
         return self.pipeline(text)
