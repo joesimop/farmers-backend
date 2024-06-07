@@ -1,7 +1,7 @@
 from fastapi import FastAPI, exceptions
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
-from src.api import profile, community, communityspecific, guidelines, donation, communityboard, people, faq, community_updates
+from src.api import logs, profile, community, communityspecific, guidelines, donation, communityboard, people, faq, community_updates, admin
 import json
 import logging
 from starlette.middleware.cors import CORSMiddleware
@@ -31,7 +31,8 @@ app.include_router(communityboard.router)
 app.include_router(people.router)
 app.include_router(faq.router)
 app.include_router(community_updates.router)
-# app.include_router(admin.router)
+app.include_router(logs.router)
+app.include_router(admin.router)
 
 @app.exception_handler(exceptions.RequestValidationError)
 @app.exception_handler(ValidationError)

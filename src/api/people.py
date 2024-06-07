@@ -56,8 +56,8 @@ def search_people(c_id: int, firstname: str | None = None, lastname: str | None 
         returnList.append(
             {
                 "id": person[0],
-                "firstname": person[1],
-                "lastname": person[2],
+                "first_name": person[1],
+                "last_name": person[2],
                 "username": person[3],
                 "role": person[4]
             }

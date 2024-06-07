@@ -15,8 +15,8 @@ class SortOption(Enum):
         return self.value
     
 class SortDirection(Enum):
-    Ascending = "asc"
-    Descending = "desc"
+    Ascending = "ASC"
+    Descending = "DESC"
 
     def __str__(self):
         return self.value

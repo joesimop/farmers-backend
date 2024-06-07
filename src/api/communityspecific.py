@@ -66,8 +66,8 @@ def get_all_profiles(c_id: int):
         returnList.append(
             {
                 "id": entry[0],
-                "firstname": entry[1],
-                "lastname": entry[2],
+                "first_name": entry[1],
+                "last_name": entry[2],
                 "username": entry[3]
             }
         )
@@ -76,6 +76,7 @@ def get_all_profiles(c_id: int):
 @router.get("/{role}")
 def get_role(c_id: int, role : str):
     """
+    ***NOT USED IN THE FRONTEND***
     Gets a profiles from the community designated by c_id of type "role".
 
     Parameters:
@@ -126,8 +127,8 @@ def get_role(c_id: int, role : str):
         returnList.append(
             {
                 "id": entry[0],
-                "firstname": entry[1],
-                "lastname": entry[2],
+                "first_name": entry[1],
+                "last_name": entry[2],
                 "username": entry[3]
             }
         )

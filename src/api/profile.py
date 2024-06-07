@@ -26,20 +26,23 @@ class UserStorage(BaseModel):
 
 class Profile(BaseModel):
     id: int
-    firstname: str
-    lastname: str
+    first_name: str
+    last_name: str
     username: str
     password: str
     email: str
     gender: str
-    age: str
-    residingcity: str
+    dob: str
+    residing_city: str
 
 class CommunityRequest(BaseModel):
     community_id: int
     name: str
     request_status: str
     submit_date: datetime.datetime
+
+class ProfilePost(BaseModel):
+    profile_id: int
 
 
 
@@ -71,11 +74,11 @@ def get_user_by_id(c_id: int, profile_id: int):
 
     jsonObject = {
         "id": user[0],
-        "firstname": user[1],
-        "lastname": user[2],
+        "first_name": user[1],
+        "last_name": user[2],
         "username": user[3],
         "email": user[4],
-        "residingcity": user[5],
+        "residing_city": user[5],
         "joined": user[6].isoformat(timespec="seconds"),
         "role": user[7]
     }
@@ -97,7 +100,7 @@ def get_user_by_username(username: str):
                                 user_profiles.c.username,
                                 user_profiles.c.email,
                                 user_profiles.c.gender,
-                                user_profiles.c.age,
+                                user_profiles.c.dob,
                                 user_profiles.c.residingcity
                                 )
                 .where(user_profiles.c.username == username)
@@ -111,13 +114,13 @@ def get_user_by_username(username: str):
         
         jsonObject = {
             "id": result[0],
-            "firstname": result[1],
-            "lastname": result[2],
+            "first_name": result[1],
+            "last_name": result[2],
             "username": result[3],
             "email": result[4],
             "gender": result[5],
-            "age": result[6],
-            "residingcity": result[7]
+            "dob": result[6],
+            "residing_city": result[7]
         }
 
         return JSONResponse(content=jsonObject, status_code=200)
@@ -179,7 +182,7 @@ def create_profile(profile: Profile):
 
     Parameters:
     - user (User): The user object containing information such as 
-        username, password, firstname, lastname, email, gender, age, and residingcity.
+        username, password, first_name, last_name, email, gender, age, and residing_city.
 
     Returns:
     - int: HTTP status code 201 indicating successful creation.
@@ -216,12 +219,12 @@ def create_profile(profile: Profile):
                 .insert(user_profiles)
                 .values(credentials_id=credentials_id,
                         username=profile.username,
-                        firstname=profile.firstname, 
-                        lastname=profile.lastname, 
+                        firstname=profile.first_name, 
+                        lastname=profile.last_name, 
                         email=profile.email, 
                         gender=profile.gender,
-                        age=int(profile.age),
-                        residingcity=profile.residingcity)
+                        dob=profile.dob,
+                        residingcity=profile.residing_city)
                 .returning(user_profiles.c.id)
             )
 
@@ -269,7 +272,7 @@ def verify_user(user: UserCredentials):
 
         user_storage = conn.execute(
             sqlalchemy
-            .select(user_credentials.c.salt, user_credentials.c.pw_hash)
+            .select(user_credentials.c.salt, user_credentials.c.pw_hash, user_profiles.c.id)
             .select_from(user_profiles.join(user_credentials, 
                                             user_profiles.c.credentials_id == user_credentials.c.id))
             .where(user_profiles.c.username == user.username)
@@ -284,9 +287,40 @@ def verify_user(user: UserCredentials):
 
         salt = user_storage[0]
         pw_hash = user_storage[1]
+        profile_id = user_storage[2]
 
         if hashing.is_correct_password(salt, pw_hash, user.password):
-            return 200
+
+            #Count the number of logins and logouts
+            counts = conn.execute(
+            sqlalchemy.text(
+                """
+                SELECT
+                    (SELECT COUNT(*) FROM logs.user_logins WHERE profile_id = :profile_id) as logins,
+                    (SELECT COUNT(*) FROM logs.user_logouts WHERE profile_id = :profile_id) as logouts
+                """
+                ), ({"profile_id": profile_id})
+            ).fetchone()
+
+            #If the user is not logged out, raise an error
+            if counts.logins != counts.logouts:
+
+                raise HTTPException(
+                    status_code=400,
+                    detail="Unable to login, user is already logged in."
+                )
+                
+            else:
+                #Log the login
+                conn.execute(
+                    sqlalchemy.text(
+                    f"""
+                        INSERT INTO logs.user_logins (profile_id)
+                        VALUES ({profile_id})
+                    """
+                    )
+                )
+                return 200
 
         else:
             raise HTTPException(
@@ -327,3 +361,58 @@ def get_community_requests(profile_id: int):
         )
 
     return returnList
+
+@router.post("/logout")
+def logout(logout: ProfilePost):
+    """
+    Logs out a user.
+
+    Parameters:
+    - profile_id (int): The ID of the user to log out.
+
+    Returns:
+    - int: HTTP status code 200 if logout is successful.
+
+    Raises:
+    - HTTPException: If the provided profile ID does not exist, a 400 Bad Request status code is returned with the detail "Profile ID does not exist."
+
+    Implementation Details:
+    - The function checks if the user is logged in.
+    - If the user is not logged in, a 400 Bad Request is raised.
+    - The function logs the logout and returns a 200 OK status code.
+    """
+
+    with db.engine.begin() as conn:
+
+        #Count the number of logins and logouts
+        counts = conn.execute(
+            sqlalchemy.text(
+                """
+                SELECT
+                    (SELECT id FROM logs.user_logins WHERE profile_id = :profile_id ORDER BY timestamp DESC LIMIT 1) as most_recent_login_id,
+                    (SELECT COUNT(*) FROM logs.user_logins WHERE profile_id = :profile_id) as logins,
+                    (SELECT COUNT(*) FROM logs.user_logouts WHERE profile_id = :profile_id) as logouts
+                """
+            ), ({"profile_id": logout.profile_id})
+        ).fetchone()
+
+        #If the user is not logged in, raise an error
+        if counts.logins - 1 != counts.logouts:
+
+            raise HTTPException(
+                status_code=400,
+                detail="Unable to logout, user is not logged in."
+            )
+        
+        else:
+            #Otherwise, log the logout, and succesfully let the user logout
+            conn.execute(
+                sqlalchemy.text(
+                """
+                    INSERT INTO logs.user_logouts (profile_id, associated_login)
+                    VALUES (:profile_id, :most_recent_login_id)
+                """
+                ), ({"profile_id": logout.profile_id, "most_recent_login_id": counts.most_recent_login_id})
+            )
+
+    return 200

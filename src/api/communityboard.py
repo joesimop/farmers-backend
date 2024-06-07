@@ -1,9 +1,11 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from psycopg2.errors import ForeignKeyViolation
 from typing import Optional
 from src.api.search import build_search_statements, expand_search_statements
 from src.order_by import user_sortable_endpoint, SortOption, SortDirection
+from src.AI.model import Model
+from src.api.admin import AdminNotification
 
 
 import sqlalchemy
@@ -12,6 +14,7 @@ from pydantic import BaseModel
 from src import database as db
 from sqlalchemy.exc import DBAPIError
 
+text_classifier = Model()
 
 router = APIRouter(
     prefix="/communities/{c_id}/board",
@@ -193,28 +196,58 @@ def create_post(c_id : int, post: BoardPost):
     - If there is a database error, raise an error.
     """
 
-    try:
-        with db.engine.begin() as conn:
-            
-            conn.execute(
-                sqlalchemy.text(
-                    """
-                    INSERT INTO posts (community_id, profile_id, text, timestamp, upvotes, pinned)
-                    VALUES (:community_id, :profile_id, :text, :timestamp, :upvotes, :pinned)
-                    """
-                ), ({"community_id" : c_id,
-                    "profile_id" : post.profile_id,
-                    "text" : post.text,
-                    "timestamp" : post.timestamp,
-                    "upvotes" : 0,
-                    "pinned" : post.pinned})
-            )
+    post_evaluation = text_classifier.predict(post.text)
 
-    except DBAPIError as error:
-        print(error)
-        raise(HTTPException(status_code=500, detail="Database error"))
+    post_flagged = post_evaluation[0]['label'] == 'LABEL_0' and post_evaluation[0]['score'] > 0.9
+
+    if post_flagged:
+
+        try:
+            with db.engine.begin() as conn:
+                    
+                    conn.execute(
+                        sqlalchemy.text(
+                            """
+                            INSERT INTO admin.notifications (profile_id, text, community_id, type)
+                            VALUES (:profile_id, :text, :community_id, :type)
+                            """
+                        ), ({"profile_id" : post.profile_id,
+                            "text" : post.text,
+                            "type": AdminNotification.flagged_post.value,
+                            "community_id" : c_id })
+                    )
+
+        except DBAPIError as error:
+            print(error)
+            raise(HTTPException(status_code=500, detail="Database error"))
+        
+
+        return JSONResponse(content={"message": "Post must be approved by admin before posting."}, status_code=400)
     
-    return 201
+    else:
+
+        try:
+            with db.engine.begin() as conn:
+                
+                conn.execute(
+                    sqlalchemy.text(
+                        """
+                        INSERT INTO posts (community_id, profile_id, text, timestamp, upvotes, pinned)
+                        VALUES (:community_id, :profile_id, :text, :timestamp, :upvotes, :pinned)
+                        """
+                    ), ({"community_id" : c_id,
+                        "profile_id" : post.profile_id,
+                        "text" : post.text,
+                        "timestamp" : post.timestamp,
+                        "upvotes" : 0,
+                        "pinned" : post.pinned})
+                )
+
+        except DBAPIError as error:
+            print(error)
+            raise(HTTPException(status_code=500, detail="Database error"))
+        
+        return 201
 
 @router.put("/upvote_toggle")
 def upvote_post(c_id : int, input: BooleanToggle):
