@@ -8,11 +8,11 @@ from starlette.middleware.cors import CORSMiddleware
 import sys
 
 description = """
-Backend for RareConnect.
+Backend for Main Street Market.
 """
 
 app = FastAPI(
-    title="RareConnectBakend",
+    title="Main Street Market Backend",
     description=description,
     version="0.0.1",
     terms_of_service="",
@@ -59,4 +59,4 @@ async def validation_exception_handler(request, exc):
 
 @app.get("/")
 async def root():
-    return {"message": "Backend Application for RareConnect"}
+    return {"message": "Backend Application for Farmer's Market"}
