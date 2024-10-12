@@ -6,7 +6,6 @@ import sqlalchemy
 import datetime
 from pydantic import BaseModel
 from src import database as db
-from src.schemas import roles, user_credentials, user_profiles, communities
 from src import hashing
 from sqlalchemy.exc import DBAPIError
 

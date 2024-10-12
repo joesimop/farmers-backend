@@ -1,6 +1,5 @@
-import os, io
+import os
 import dotenv
-import boto3
 from sqlalchemy import create_engine
 
 def database_connection_url():
