@@ -102,7 +102,7 @@ def get_market_manager_markets(market_manager_id: int):
                 "name": market[1],
                 "city": market[2],
                 "state": market[3],
-                "created_at": market[4]
+                "created_at": market[4].isoformat()
             }
         )
     

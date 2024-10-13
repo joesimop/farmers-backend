@@ -1,13 +1,12 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
-from psycopg2.errors import UniqueViolation, NotNullViolation
+from psycopg2.errors import UniqueViolation, NotNullViolation, ForeignKeyViolation
 from typing import Optional
 
 import sqlalchemy
 import datetime
 from pydantic import BaseModel
 from src import database as db
-from src import hashing
 from sqlalchemy.exc import DBAPIError
 
 router = APIRouter(
@@ -66,8 +65,12 @@ def create_market(market: Create_Market):
                         "state": market.state
                     }
             )
+
     except DBAPIError as e:
-        
+
+        if isinstance(e.orig, ForeignKeyViolation):
+            raise HTTPException(status_code=400, detail="Market Manager does not exist")
+
         if isinstance(e.orig, UniqueViolation):
             raise HTTPException(status_code=400, detail="Market already exists")
         
@@ -76,7 +79,8 @@ def create_market(market: Create_Market):
 
         raise HTTPException(status_code=500, detail="Database error")
 
-    return JSONResponse(content={"message": "Market created successfully"}, status_code=201)
+
+    return JSONResponse(status_code=201, content={"message": "Market created successfully"})
 
 
 @router.get("/{market_id}/vendors")
@@ -114,12 +118,15 @@ def get_market_vendors(market_id: int):
 
     return_list = []
     for vendor in vendors:
+
+        cpc_expr = vendor[3] if vendor[3] is None else vendor[3].isoformat()
+
         return_list.append(
             {
                 "id": vendor[0],
                 "business_name": vendor[1],
                 "current_cpc": vendor[2],
-                "cpc_expr": vendor[3],
+                "cpc_expr": cpc_expr,
                 "type": vendor[4]
             }
         )
