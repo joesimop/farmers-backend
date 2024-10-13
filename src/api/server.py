@@ -1,7 +1,7 @@
 from fastapi import FastAPI, exceptions
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
-from src.api import profile, people
+from src.api import profile, people, checkout
 import json
 import logging
 from starlette.middleware.cors import CORSMiddleware
@@ -24,6 +24,7 @@ app = FastAPI(
 
 app.include_router(profile.router)
 app.include_router(people.router)
+app.include_router(checkout.router)
 
 @app.exception_handler(exceptions.RequestValidationError)
 @app.exception_handler(ValidationError)
