@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
 from psycopg2.errors import ForeignKeyViolation, UniqueViolation
-from src.api.search import build_search_statements, expand_search_statements
+from src.search import build_search_statements, expand_search_statements
 from src.order_by import user_sortable_endpoint, SortOption, SortDirection
 
 #from fastapi_pagination import Page, add_pagination, paginate
