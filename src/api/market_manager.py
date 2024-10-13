@@ -69,3 +69,41 @@ def create_market_manager(market_manager: Create_MarketManager):
     return JSONResponse(status_code=201, content={"detail": "Market manager created successfully."})
 
 
+@router.get("/{market_manager_id}/markets")
+def get_market_manager_markets(market_manager_id: int):
+    """
+    Gets all markets managed for a market manager.
+
+    Parameters:
+    """
+
+    try:
+        with db.engine.begin() as conn:
+            markets = conn.execute(
+                sqlalchemy.text(
+                    f"""
+                    SELECT id, name, city, state, created_at
+                    FROM markets
+                    WHERE manager_id = :manager_id
+                    """
+                ), {"manager_id": market_manager_id}
+            ).fetchall()
+
+    except DBAPIError as error:
+        print(error)
+        raise(HTTPException(status_code=500, detail="Database error"))
+    
+    return_list = []
+
+    for market in markets:
+        return_list.append(
+            {
+                "id": market[0],
+                "name": market[1],
+                "city": market[2],
+                "state": market[3],
+                "created_at": market[4]
+            }
+        )
+    
+    return JSONResponse(status_code=200, content=return_list)

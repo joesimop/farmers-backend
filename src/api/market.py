@@ -77,3 +77,51 @@ def create_market(market: Create_Market):
         raise HTTPException(status_code=500, detail="Database error")
 
     return JSONResponse(content={"message": "Market created successfully"}, status_code=201)
+
+
+@router.get("/{market_id}/vendors")
+def get_market_vendors(market_id: int):
+    """
+    Get all vendors in a market.
+
+    Parameters:
+    - market_id (int): The id of the market to get vendors from.
+
+    Returns:
+    - JSONResponse: A JSON object containing the vendors in the market.
+
+    Raises:
+    - HTTPException: If there is an error during database interaction, it is caught, and an appropriate error message is printed.
+    """
+
+    try:
+        with db.engine.begin() as conn:
+            vendors = conn.execute(
+                sqlalchemy.text(
+                    """
+                    SELECT vendors.id, business_name, current_cpc, cpc_expr, vendors.type
+                    FROM vendors
+                    INNER JOIN vendors_at_markets ON vendors.id = vendors_at_markets.vendor_id
+                    WHERE vendors_at_markets.market_id = :market_id
+                    """
+                ),
+                {"market_id": market_id}
+            ).fetchall()
+
+    except DBAPIError as e:
+        print(e)
+        raise HTTPException(status_code=500, detail="Database error")
+
+    return_list = []
+    for vendor in vendors:
+        return_list.append(
+            {
+                "id": vendor[0],
+                "business_name": vendor[1],
+                "current_cpc": vendor[2],
+                "cpc_expr": vendor[3],
+                "type": vendor[4]
+            }
+        )
+
+    return JSONResponse(status_code=200, content=return_list)

@@ -81,7 +81,7 @@ def create_vendor(vendor: Create_Vendor):
 
     return JSONResponse(status_code=201, content={"message": return_message})
 
-@router.post("{vendor_id}/join_market")
+@router.post("/{vendor_id}/join_market")
 def join_market(vendor_id: int, market: IdConcealer):
     """
     Allows a vendor to join a market.
