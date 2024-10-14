@@ -68,7 +68,6 @@ def create_market_manager(market_manager: Create_MarketManager):
     
     return JSONResponse(status_code=201, content={"detail": "Market manager created successfully."})
 
-
 @router.get("/{market_manager_id}/markets")
 def get_market_manager_markets(market_manager_id: int):
     """
@@ -105,5 +104,61 @@ def get_market_manager_markets(market_manager_id: int):
                 "created_at": market[4].isoformat()
             }
         )
+    
+    return JSONResponse(status_code=200, content=return_list)
+
+@router.get("/{market_manager_id}/vendors_per_market")
+def get_market_vendors(market_manager_id: int):
+    """
+    Gets all vendors for each market managed by a market manager.
+
+    Parameters:
+    - market_manager_id (int): The ID of the market manager.
+
+    Returns:
+    - JSONResponse: A list of markets and their associated vendors.
+
+    Raises:
+    - HTTPException: If there is an error during database interaction, it is caught, and an appropriate error message is printed.
+    """
+    try:
+        with db.engine.begin() as conn:
+            vendors_per_market = conn.execute(
+                sqlalchemy.text(
+                    f"""
+                    SELECT m.name, string_agg(v.id || ',' || v.business_name,
+                                                ', ' ORDER BY v.business_name) as vendors
+                    FROM vendors v
+                    JOIN vendors_at_markets vm ON v.id = vm.vendor_id
+                    JOIN markets m ON vm.market_id = m.id
+                    WHERE m.manager_id = :manager_id
+                    GROUP BY m.id
+                    """
+                ), {"manager_id": market_manager_id}
+            ).fetchall()
+
+    except DBAPIError as error:
+        raise(HTTPException(status_code=500, detail="Database error"))
+    
+    return_list = []
+
+    print(vendors_per_market)
+
+    for market in vendors_per_market:
+        market_json = {
+            "market": market[0],
+            "vendors": []
+        }
+        for vendor in market[1].split(", "):
+            vendor_id, vendor_name = vendor.split(",")
+            market_json["vendors"].append(
+                {
+                    "id": int(vendor_id),
+                    "name": vendor_name
+                }
+            )
+        return_list.append(market_json)
+
+    print(return_list)
     
     return JSONResponse(status_code=200, content=return_list)
