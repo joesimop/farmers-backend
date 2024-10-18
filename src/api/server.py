@@ -44,9 +44,13 @@ async def validation_exception_handler(request, exc):
     
     else:
 
-        response = {"message": [], "data": None}
-        for error in exc_json:
-            response['message'].append(f"{error['loc']}: {error['msg']}")
+        response = {"detail": []}
+
+        if len(exc_json) == 1:
+            response['detail'] = f"{exc_json[0]['loc']}: {exc_json[0]['msg']}"
+        else:
+            for error in exc_json:
+                response['detail'].append(f"{error['loc']}: {error['msg']}")
 
         return JSONResponse(response, status_code=422)
 

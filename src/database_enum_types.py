@@ -9,6 +9,7 @@ class TokenType(Enum):
 class FeeType(Enum):
     PercentGross = "PERCENT_GROSS"
     FlatFee = "FLAT_FEE"
+    FlatPercentCombo = "FLAT_PERCENT_COMBO"
     MaxOfEither = "MAX_OF_EITHER"
     GovFee = "GOV_FEE"
 
