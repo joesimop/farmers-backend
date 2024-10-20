@@ -16,7 +16,7 @@ from src import database as db
 from sqlalchemy.exc import DBAPIError
 
 router = APIRouter(
-    prefix="/market_manager/checkout",
+    prefix="/market_manager/{market_manager_id}/checkout",
     tags=["checkout"],
 )
 
@@ -30,7 +30,7 @@ class CheckoutInit(BaseModel):
     market_fees: list[MarketVendorFee]
 
 
-@router.post("/{market_manager_id}}")
+@router.post("")
 def get_checkout_options(market_manager_id: int):
     """
     Gets the checkout options for a market manager.
@@ -118,9 +118,6 @@ def get_checkout_options(market_manager_id: int):
     return_list = [market_body for market_body in market_map.values()]
 
     return JSONResponse(status_code=200, content=return_list)
-
-
-    
 
 @router.post("/init")
 def init_checkout(market_id: int, market_date: datetime.date = datetime.date.today()):
