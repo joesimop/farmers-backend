@@ -105,7 +105,7 @@ def join_market(vendor_id: int, market: IdConcealer):
                 sqlalchemy.text(
             
                     """
-                    INSERT INTO vendors_at_markets (market_id, vendor_id)
+                    INSERT INTO market_vendors (market_id, vendor_id)
                     VALUES (:market_id, :vendor_id)
                     """
                     ),

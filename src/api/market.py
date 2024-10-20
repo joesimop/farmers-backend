@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from psycopg2.errors import UniqueViolation, NotNullViolation, ForeignKeyViolation
 from typing import Optional
-from src.database_enum_types import VendorType, FeeType
+from src.database_enum_types import VendorType, FeeType, DaysOfWeek
 from decimal import Decimal
 
 import sqlalchemy
@@ -29,6 +29,7 @@ class Create_Market(BaseModel):
     name: str
     city: Optional[str] = None
     state: Optional[str] = None
+    days_of_week: list[DaysOfWeek]
 
 class Create_FeeForVendorType(BaseModel):
     market_id: int
@@ -59,6 +60,8 @@ def create_market(market: Create_Market):
 
     try:
         with db.engine.begin() as conn:
+
+            #Insert market into database
             conn.execute(
                 sqlalchemy.text(
             
@@ -75,6 +78,21 @@ def create_market(market: Create_Market):
                     }
             )
 
+            #Insert a relation for each market day
+            for day in market.days_of_week:
+                conn.execute(
+                    sqlalchemy.text(
+                        """
+                        INSERT INTO market_days (market_id, day_of_week)
+                        VALUES (:market_id, :day_of_week)
+                        """
+                    ),
+                    {"market_id": market.id, "day_of_week": day.value}
+                )
+
+
+    # Note that technically, days of week execeptions are not being handled here.
+    # Would have to split up the into different transaction
     except DBAPIError as e:
 
         if isinstance(e.orig, ForeignKeyViolation):
