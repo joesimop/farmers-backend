@@ -42,7 +42,12 @@ class Create_FeeForVendorType(BaseModel):
 @router.post("/create")
 def create_market(market: Create_Market):
     """
-    Creates a new market.
+    Creates a new market. The following steps are taken:
+    1.) Insert the market into the database.
+        - Market must have a manager_id and name.
+        - City and State are optional.
+    2.) Create the market days for the market.
+        - Cannot register same day twice for the same market.
 
     Parameters:
     - market (Market): The market object containing: 
@@ -81,16 +86,21 @@ def create_market(market: Create_Market):
             #Insert a relation for each market day
             #This is okay because it will be run a maximum of 7 times, and most likely 2 at most
             #Won't let duplicate days of week be for the same market
-            for day in market.days_of_week:
-                conn.execute(
-                    sqlalchemy.text(
-                        """
-                        INSERT INTO market_days (market_id, day_of_week)
-                        VALUES (:market_id, :day_of_week)
-                        """
-                    ),
-                    {"market_id": market.id, "day_of_week": day.value}
-                )
+            conn.execute(
+                sqlalchemy.text(
+                    """
+                    INSERT INTO market_days (market_id, day_of_week)
+                    VALUES (:market_id, :day_of_week)
+                    """
+                ),
+                [
+                    {
+                        "market_id": market.id, 
+                        "day_of_week": day.value
+                    }
+                    for day in market.days_of_week
+                ]
+            )
 
 
     # Note that technically, days of week execeptions are not being handled here.
@@ -201,7 +211,7 @@ def create_fee_for_vendor_type(body: Create_FeeForVendorType):
                 {"market_id": body.market_id, 
                  "vendor_type": body.vendor_type.value,
                  "fee_type": body.fee_type.value,
-                 "rate": body.rate_1,
+                 "rate": body.rate,
                  "rate_2": body.rate_2}
             )
 

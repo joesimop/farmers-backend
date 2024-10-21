@@ -43,6 +43,11 @@ class VendorType(Enum):
     NonProducer = "NON_PRODUCER"
     Ancillary = "ANCILLARY"
 
+class TokenTransactorType(Enum):
+    MarketManager = "MARKET_MANAGER"
+    Vendor = "VENDOR"
+    Customer = "CUSTOMER"
+
 class DocumentType(Enum):
     CPCCert = "CPC_CERT"
     LiabilityCert = "LIABILITY_CERT"
