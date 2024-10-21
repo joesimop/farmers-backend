@@ -79,6 +79,8 @@ def create_market(market: Create_Market):
             )
 
             #Insert a relation for each market day
+            #This is okay because it will be run a maximum of 7 times, and most likely 2 at most
+            #Won't let duplicate days of week be for the same market
             for day in market.days_of_week:
                 conn.execute(
                     sqlalchemy.text(
@@ -141,8 +143,8 @@ def get_market_vendors(market_id: int):
                     """
                     SELECT vendors.id, business_name, current_cpc, cpc_expr, vendors.type
                     FROM vendors
-                    INNER JOIN vendors_at_markets ON vendors.id = vendors_at_markets.vendor_id
-                    WHERE vendors_at_markets.market_id = :market_id
+                    INNER JOIN market_vendors AS mv ON vendors.id = mv.vendor_id
+                    WHERE mv.market_id = :market_id
                     """
                 ),
                 {"market_id": market_id}

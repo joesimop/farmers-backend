@@ -129,8 +129,8 @@ def get_market_vendors(market_manager_id: int):
                     SELECT m.name, string_agg(v.id || ',' || v.business_name,
                                                 ', ' ORDER BY v.business_name) as vendors
                     FROM vendors v
-                    JOIN vendors_at_markets vm ON v.id = vm.vendor_id
-                    JOIN markets m ON vm.market_id = m.id
+                    JOIN market_vendors mv ON v.id = mv.vendor_id
+                    JOIN markets m ON mv.market_id = m.id
                     WHERE m.manager_id = :manager_id
                     GROUP BY m.id
                     """

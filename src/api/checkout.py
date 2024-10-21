@@ -72,11 +72,12 @@ def get_checkout_options(market_manager_id: int):
                     SELECT market_id, market_date
                     FROM 
                         (SELECT DISTINCT vm.market_id as market_id, market_date,
-                            DENSE_RANK() OVER (PARTITION BY vm.market_id ORDER BY checkouts.market_date DESC) as rank
+                            DENSE_RANK() OVER (PARTITION BY vm.market_id ORDER BY checkouts.market_date ASC) as rank
                         FROM vendor_checkouts as checkouts
                         JOIN market_vendors AS vm ON checkouts.market_vendor = vm.id
                         WHERE vm.market_id in :market_ids) as date_ranks
                     WHERE rank <= 10
+                    ORDER BY market_date DESC
                     """
                 ),{"market_ids": market_ids}
             ).fetchall()
@@ -119,7 +120,7 @@ def get_checkout_options(market_manager_id: int):
 
     return JSONResponse(status_code=200, content=return_list)
 
-@router.post("/init")
+@router.post("/{market_id}")
 def init_checkout(market_id: int, market_date: datetime.date = datetime.date.today()):
     """
     Initializes the checkout process.
@@ -134,6 +135,7 @@ def init_checkout(market_id: int, market_date: datetime.date = datetime.date.tod
     - HTTPException: If the market is not found, a 404 error is raised.
     """
     
+    #If the entered date is in the future, raise a 400 error
     if not before_equal_to_today(market_date):
         raise HTTPException(status_code=400, detail="Market date must be before or equal to today")
 
