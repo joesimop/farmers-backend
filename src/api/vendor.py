@@ -52,7 +52,7 @@ def create_vendor(vendor: Create_Vendor):
     """
     try:
         with db.engine.begin() as conn:
-            conn.execute(
+            vendor_id = conn.execute(
                 sqlalchemy.text(
             
                     """
@@ -70,16 +70,24 @@ def create_vendor(vendor: Create_Vendor):
                     }
 
             )
+            
     except DBAPIError as error:
         print(error)
         raise(HTTPException(status_code=500, detail="Database error"))
 
+    #If we didn't get an id back, something went wrong
+    if vendor_id.inserted_primary_key is None:
+        raise(HTTPException(status_code=500, detail="Database error"))
+    else:
+        vendor_id = vendor_id.inserted_primary_key[0]
+    
     # Notify the user if no cpc number or expiration was provided
     return_message = "Vendor created successfully."
+
     if vendor.current_cpc is None or vendor.cpc_expr is None:
         return_message = return_message + " No CPC number or expiration was provided."
 
-    return JSONResponse(status_code=201, content={"message": return_message})
+    return JSONResponse(status_code=201, content={"id": vendor_id, "detail": return_message})
 
 @router.post("/{vendor_id}/join_market")
 def join_market(vendor_id: int, market: IdConcealer):
