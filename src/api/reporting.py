@@ -55,11 +55,12 @@ def get_report(market_manager_id: int,
 
     try:
         with db.engine.begin() as conn:
-            checkouts = conn.execute(
+            reports = conn.execute(
                 sqlalchemy.text(
                     f"""
                     SELECT 
                         json_build_object(
+                            'id', vc.id,
                             'business_name', v.business_name, 
                             'gross', vc.gross, 
                             'fees_paid', vc.fees_paid,
@@ -92,4 +93,4 @@ def get_report(market_manager_id: int,
         raise(HTTPException(status_code=500, detail="Database error"))
     
 
-    return JSONResponse(status_code=200, content=[checkout[0] for checkout in checkouts])
+    return JSONResponse(status_code=200, content=[report[0] for report in reports])
