@@ -41,7 +41,7 @@ def get_report(market_manager_id: int,
                market_id: int | None = None, 
                market_date: datetime.date | None = None, 
                sort_by: SortOption | None = SortOption.MarketDate, 
-               sort_direction: SortDirection | None = SortDirection.Ascending):
+               sort_direction: SortDirection | None = SortDirection.Descending):
     """
     """
 
