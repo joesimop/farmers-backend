@@ -138,7 +138,7 @@ def get_checkout_options(market_manager_id: int):
     return JSONResponse(status_code=200, content=return_list)
 
 @router.post("/{market_id}")
-def init_checkout(market_id: int, market_date: datetime.date = datetime.date.today()):
+def init_checkout(market_manager_id: int, market_id: int, market_date: datetime.date = datetime.date.today()):
     """
     Initializes the checkout process.
 
@@ -163,8 +163,7 @@ def init_checkout(market_id: int, market_date: datetime.date = datetime.date.tod
                 """
                 vendors_agg AS (
                     SELECT json_agg(market_vendors_cte) AS vendors
-                    FROM market_vendors_cte as 
-                    JOIN 
+                    FROM market_vendors_cte 
                 ),
                 fees_agg AS (
                     SELECT json_agg(market_fees_cte) AS fees
