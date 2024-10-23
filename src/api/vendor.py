@@ -31,6 +31,10 @@ class Create_Vendor(BaseModel):
     cpc_expr: Optional[datetime.datetime] = None
     type: VendorType
 
+class VendorJoinMarket(BaseModel):
+    vendor_id: int
+    market_id: int
+
 
 @router.post("/create")
 def create_vendor(vendor: Create_Vendor):
@@ -70,7 +74,7 @@ def create_vendor(vendor: Create_Vendor):
                     }
 
             )
-            
+
     except DBAPIError as error:
         print(error)
         raise(HTTPException(status_code=500, detail="Database error"))
@@ -89,8 +93,8 @@ def create_vendor(vendor: Create_Vendor):
 
     return JSONResponse(status_code=201, content={"id": vendor_id, "detail": return_message})
 
-@router.post("/{vendor_id}/join_market")
-def join_market(vendor_id: int, market: IdConcealer):
+@router.post("/join_market")
+def join_market(market_vendor: VendorJoinMarket):
     """
     Allows a vendor to join a market.
 
@@ -119,8 +123,8 @@ def join_market(vendor_id: int, market: IdConcealer):
                     ),
 
                     {
-                        "market_id": market.id,
-                        "vendor_id": vendor_id
+                        "market_id": market_vendor.market_id,
+                        "vendor_id": market_vendor.vendor_id
                     }
 
             )
