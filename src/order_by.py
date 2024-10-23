@@ -9,7 +9,7 @@ class SortOption(Enum):
     FeesPaid = "FEES_PAID"
 
     def __str__(self):
-        return self.value
+        return self.value.lower()
     
 class SortDirection(Enum):
     Ascending = "ASC"

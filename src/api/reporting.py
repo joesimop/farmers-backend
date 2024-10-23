@@ -36,7 +36,7 @@ def get_report_options(market_manager_id: int):
     return JSONResponse(status_code=200, content=return_list)
 
 @router.get("/report")
-@user_sortable_endpoint(SortOption.MarketDate, SortOption.VendorName, SortOption.ReportedGross, SortOption.FeesPaid)
+@user_sortable_endpoint(SortOption.MarketDate, SortOption.VendorName, SortOption.Gross, SortOption.FeesPaid)
 def get_report(market_manager_id: int,
                market_id: int | None = None, 
                market_date: datetime.date | None = None, 
@@ -81,7 +81,7 @@ def get_report(market_manager_id: int,
                     LEFT JOIN market_tokens AS mt ON td.market_token = mt.id
                     WHERE m.manager_id = :market_manager_id{where_clause}
                     GROUP BY vc.id, v.business_name
-                    ORDER BY {sort_by.value.lower()} {sort_direction}
+                    ORDER BY {sort_by} {sort_direction}
                     """
                 ), {"market_manager_id": market_manager_id,
                     "market_id": market_id, 
