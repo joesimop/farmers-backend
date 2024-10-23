@@ -3,13 +3,10 @@ from functools import wraps
 from fastapi import HTTPException
 
 class SortOption(Enum):
-    Date = "timestamp"
-    Upvotes = "upvotes"
-    Title = "title"
-    Firstname = "firstname"
-    Lastname = "lastname"
-    Username = "username"
-    Pinned = "pinned"
+    MarketDate = "market_date"
+    VendorName = "buisness_name"
+    ReportedGross = "gross"
+    FeesPaid = "fees_paid"
 
     def __str__(self):
         return self.value
