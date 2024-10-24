@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from psycopg2.errors import UniqueViolation
 from src.database_enum_types import DaysOfWeek
+from src.api_error_handling import handle_error, DatabaseError as db_error
 
 import sqlalchemy
 import datetime
@@ -90,7 +91,6 @@ def get_market_manager_markets(market_manager_id: int):
             ).fetchall()
 
     except DBAPIError as error:
-        print(error)
         raise(HTTPException(status_code=500, detail="Database error"))
     
     return_list = []
@@ -127,8 +127,7 @@ def get_market_vendors(market_manager_id: int):
             vendors_per_market = conn.execute(
                 sqlalchemy.text(
                     f"""
-                    SELECT m.name, string_agg(v.id || ',' || v.business_name,
-                                                ', ' ORDER BY v.business_name) as vendors
+                    SELECT m.name, string_agg(v.id || ',' || v.business_name, ', ' ORDER BY v.business_name) as vendors
                     FROM vendors v
                     JOIN market_vendors mv ON v.id = mv.vendor_id
                     JOIN markets m ON mv.market_id = m.id
@@ -139,6 +138,9 @@ def get_market_vendors(market_manager_id: int):
             ).fetchall()
 
     except DBAPIError as error:
+
+        handle_error(error, db_error.FOREIGN_KEY_VIOLATION)
+
         raise(HTTPException(status_code=500, detail="Database error"))
     
     return_list = []
@@ -217,7 +219,9 @@ def get_market_options(market_manager_id: int):
             ).fetchall()
     
     except DBAPIError as e:
-        print(e)
+        
+        handle_error(e, db_error.FOREIGN_KEY_VIOLATION)
+
         raise HTTPException(status_code=500, detail="Database error")
     
     #Populates the json response, kinda efficiently

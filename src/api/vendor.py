@@ -4,6 +4,7 @@ from psycopg2.errors import UniqueViolation, ForeignKeyViolation
 from src.database_enum_types import VendorType
 from src.global_models import IdConcealer
 from typing import Optional
+from src.api_error_handling import handle_error, DatabaseError as db_error
 
 import sqlalchemy
 import datetime
@@ -76,20 +77,20 @@ def create_vendor(vendor: Create_Vendor):
             )
 
     except DBAPIError as error:
-        print(error)
+        
+        handle_error(error, db_error.NOT_NULL_VIOLATION,
+                            db_error.UNIQUE_VIOLATION)
+
         raise(HTTPException(status_code=500, detail="Database error"))
 
     #If we didn't get an id back, something went wrong
     if vendor_id.inserted_primary_key is None:
-        raise(HTTPException(status_code=500, detail="Database error"))
+        raise(HTTPException(status_code=500, detail="Insert to database failed"))
     else:
         vendor_id = vendor_id.inserted_primary_key[0]
     
     # Notify the user if no cpc number or expiration was provided
     return_message = "Vendor created successfully."
-
-    if vendor.current_cpc is None or vendor.cpc_expr is None:
-        return_message = return_message + " No CPC number or expiration was provided."
 
     return JSONResponse(status_code=201, content={"id": vendor_id, "detail": return_message})
 

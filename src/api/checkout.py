@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
-from psycopg2.errors import  ForeignKeyViolation
+from psycopg2.errors import  ForeignKeyViolation, UniqueViolation
 from typing import Optional
 from src.database_enum_types import TokenTransactorType
 from decimal import Decimal
@@ -9,6 +9,7 @@ from src.api.vendor import Vendor
 from src.helpers import before_equal_to_today
 from src.CTE import market_tokens_cte, market_fees_cte, market_vendors_cte
 from src.api.market_manager import get_market_options
+from src.api_error_handling import handle_error, DatabaseError as db_error
 
 import sqlalchemy
 import datetime
@@ -82,31 +83,38 @@ def init_checkout(market_manager_id: int, market_id: int, market_date: datetime.
     if not before_equal_to_today(market_date):
         raise HTTPException(status_code=400, detail="Market date must be before or equal to today")
 
-    with db.engine.begin() as conn:
-        result = conn.execute(
-            sqlalchemy.text(
-                f"WITH {market_vendors_cte}, {market_fees_cte}, {market_tokens_cte}," +
-                """
-                vendors_agg AS (
-                    SELECT json_agg(market_vendors_cte) AS vendors
-                    FROM market_vendors_cte 
-                ),
-                fees_agg AS (
-                    SELECT json_agg(market_fees_cte) AS fees
-                    FROM market_fees_cte
-                ),
-                tokens_agg AS (
-                    SELECT json_agg(market_tokens_cte) AS tokens
-                    FROM market_tokens_cte
-                )
+    try:
+        with db.engine.begin() as conn:
+            result = conn.execute(
+                sqlalchemy.text(
+                    f"WITH {market_vendors_cte}, {market_fees_cte}, {market_tokens_cte}," +
+                    """
+                    vendors_agg AS (
+                        SELECT json_agg(market_vendors_cte) AS vendors
+                        FROM market_vendors_cte 
+                    ),
+                    fees_agg AS (
+                        SELECT json_agg(market_fees_cte) AS fees
+                        FROM market_fees_cte
+                    ),
+                    tokens_agg AS (
+                        SELECT json_agg(market_tokens_cte) AS tokens
+                        FROM market_tokens_cte
+                    )
 
-                SELECT json_build_object('vendors', vendors_agg.vendors, 
-                                         'fees', fees_agg.fees, 
-                                        'tokens', tokens_agg.tokens) as body
-                FROM vendors_agg, fees_agg, tokens_agg
-                """
-            ), {"market_id": market_id}
-        ).fetchall()
+                    SELECT json_build_object('vendors', vendors_agg.vendors, 
+                                            'fees', fees_agg.fees, 
+                                            'tokens', tokens_agg.tokens) as body
+                    FROM vendors_agg, fees_agg, tokens_agg
+                    """
+                ), {"market_id": market_id}
+            ).fetchall()
+
+    except DBAPIError as e:
+
+        handle_error(e, db_error.FOREIGN_KEY_VIOLATION)
+        
+        raise HTTPException(status_code=500, detail="Database error")
 
     return JSONResponse(status_code=200, content=result[0][0])
 
@@ -175,9 +183,14 @@ def submit_checkout(checkout_submit: CheckoutSubmit):
         
 
     except DBAPIError as e:
-        print(e)
-        raise HTTPException(status_code=500, detail="Database error")
 
+        handle_error(e, db_error.FOREIGN_KEY_VIOLATION, 
+                        db_error.UNIQUE_VIOLATION,
+                        db_error.NOT_NULL_VIOLATION)
+
+        raise HTTPException(status_code=500, detail="Database error")
+        
+        
     return JSONResponse(status_code=200, content={"message": "Checkout submitted successfully"})
 
 @router.get("/market_fees")
@@ -219,8 +232,10 @@ def get_market_fees(market_id: int):
 
     except DBAPIError as e:
         
-        if isinstance(e.orig, ForeignKeyViolation):
-            raise HTTPException(status_code=404, detail="Market not found")
+        error = handle_error(e, db_error.FOREIGN_KEY_VIOLATION)
+
+        if error is not None:
+            raise error
 
         raise HTTPException(status_code=500, detail="Database error")
     

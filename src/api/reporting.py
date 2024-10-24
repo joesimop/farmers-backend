@@ -1,15 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from psycopg2.errors import  ForeignKeyViolation
-from typing import Optional
-from src.database_enum_types import DaysOfWeek, TokenTransactorType
-from decimal import Decimal
-from src.global_models import MarketVendorFee
-from src.api.vendor import Vendor
-from src.helpers import before_equal_to_today
-from src.CTE import market_tokens_cte, market_fees_cte, market_vendors_cte
 from src.api.market_manager import get_market_options
-from src.search import build_search_statements, expand_search_statements
 from src.order_by import user_sortable_endpoint, SortOption, SortDirection
 
 import sqlalchemy
@@ -85,7 +77,8 @@ def get_report(market_manager_id: int,
                     """
                 ), {"market_manager_id": market_manager_id,
                     "market_id": market_id, 
-                    "market_date": market_date}
+                    "market_date": market_date
+                }
             ).fetchall()
             
     except DBAPIError as error:

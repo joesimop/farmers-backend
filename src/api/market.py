@@ -1,9 +1,10 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
-from psycopg2.errors import UniqueViolation, NotNullViolation, ForeignKeyViolation
+from psycopg2.errors import UniqueViolation
 from typing import Optional
 from src.database_enum_types import VendorType, FeeType, DaysOfWeek
 from decimal import Decimal
+from src.api_error_handling import handle_error, DatabaseError as db_error
 
 import sqlalchemy
 import datetime
@@ -107,14 +108,10 @@ def create_market(market: Create_Market):
     # Would have to split up the into different transaction
     except DBAPIError as e:
 
-        if isinstance(e.orig, ForeignKeyViolation):
-            raise HTTPException(status_code=400, detail="Market Manager does not exist")
-
-        if isinstance(e.orig, UniqueViolation):
-            raise HTTPException(status_code=400, detail="Market already exists")
-        
-        if isinstance(e.orig, NotNullViolation):
-            raise HTTPException(status_code=400, detail="Manager ID and Market Name are required")
+        handle_error(e, db_error.FOREIGN_KEY_VIOLATION,
+                        db_error.NOT_NULL_VIOLATION,
+                        db_error.UNIQUE_VIOLATION,
+                        db_error.CHECK_VIOLATION)
 
         raise HTTPException(status_code=500, detail="Database error")
 
@@ -153,7 +150,7 @@ def get_market_vendors(market_id: int):
                     """
                     SELECT vendors.id, business_name, current_cpc, cpc_expr, vendors.type
                     FROM vendors
-                    INNER JOIN market_vendors AS mv ON vendors.id = mv.vendor_id
+                    JOIN market_vendors AS mv ON vendors.id = mv.vendor_id
                     WHERE mv.market_id = :market_id
                     """
                 ),
@@ -161,7 +158,6 @@ def get_market_vendors(market_id: int):
             ).fetchall()
 
     except DBAPIError as e:
-        print(e)
         raise HTTPException(status_code=500, detail="Database error")
 
     return_list = []
@@ -217,13 +213,9 @@ def create_fee_for_vendor_type(body: Create_FeeForVendorType):
 
     except DBAPIError as e:
 
-        print(e)
-
-        if isinstance(e.orig, NotNullViolation):
-            raise HTTPException(status_code=422, detail="Market ID, Vendor Type, Fee Type, and at least one rate is required")
-
-        if isinstance(e.orig, ForeignKeyViolation):
-            raise HTTPException(status_code=401, detail="Market not found.")
+        handle_error(e, db_error.FOREIGN_KEY_VIOLATION,
+                        db_error.NOT_NULL_VIOLATION,
+                        db_error.CHECK_VIOLATION)
         
         if isinstance(e.orig, UniqueViolation):
             raise HTTPException(status_code=400, detail="A fee for this vendor type in this market already exists")
