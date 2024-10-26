@@ -12,16 +12,19 @@ from pydantic import BaseModel
 from src import database as db
 from sqlalchemy.exc import DBAPIError
 
-
 router = APIRouter(
     prefix="/communities/{c_id}/people",
     tags=["people"],
 )
 
-
 @router.get("/search")
 @user_sortable_endpoint(SortOption.Firstname, SortOption.Lastname, SortOption.Username)
-def search_people(c_id: int, firstname: str | None = None, lastname: str | None = None, username: str | None = None, sort_by: SortOption | None = SortOption.Firstname, sort_direction: SortDirection | None = SortDirection.Ascending):
+def search_people(c_id: int, 
+                  firstname: str | None = None, 
+                  lastname: str | None = None, 
+                  username: str | None = None, 
+                  sort_by: SortOption | None = SortOption.Firstname, 
+                  sort_direction: SortDirection | None = SortDirection.Ascending):
 
     
     #Create a dictionary of the search terms and their corresponding values.

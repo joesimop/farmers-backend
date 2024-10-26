@@ -64,7 +64,7 @@ def get_checkout_options(market_manager_id: int):
     
     return JSONResponse(status_code=200, content=return_list)
 
-@router.post("/{market_id}")
+@router.get("/{market_id}")
 def init_checkout(market_manager_id: int, market_id: int, market_date: datetime.date = datetime.date.today()):
     """
     Initializes the checkout process.

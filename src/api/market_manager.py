@@ -138,7 +138,6 @@ def get_market_vendors(market_manager_id: int):
             ).fetchall()
 
     except DBAPIError as error:
-
         handle_error(error, db_error.FOREIGN_KEY_VIOLATION)
 
         raise(HTTPException(status_code=500, detail="Database error"))
