@@ -72,7 +72,7 @@ def get_report(market_manager_id: int,
                     LEFT JOIN token_deltas AS td ON vct.token_delta = td.id
                     LEFT JOIN market_tokens AS mt ON td.market_token = mt.id
                     WHERE m.manager_id = :market_manager_id{where_clause}
-                    GROUP BY vc.id, v.business_name
+                    GROUP BY vc.id, v.business_name, vc.gross, vc.fees_paid, vc.market_date
                     ORDER BY {sort_by} {sort_direction}
                     """
                 ), {"market_manager_id": market_manager_id,
