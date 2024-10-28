@@ -127,8 +127,20 @@ def get_market_vendors(market_manager_id: int):
             vendors_per_market = conn.execute(
                 sqlalchemy.text(
                     f"""
-                    SELECT m.name, string_agg(v.id || ',' || v.business_name, ', ' ORDER BY v.business_name) as vendors
-                    FROM vendors v
+                    SELECT 
+                        json_build_object(
+                            'market', m.name,
+                            'vendors', json_agg(
+                                json_build_object(
+                                    'id', v.id,
+                                    'name', v.business_name,
+                                    'type', v.type,
+                                    'current_cpc', v.current_cpc,
+                                    'cpc_expr', v.cpc_expr
+                                )
+                            )
+                        ) as market_vendors
+                    FROM vendors AS v
                     JOIN market_vendors mv ON v.id = mv.vendor_id
                     JOIN markets m ON mv.market_id = m.id
                     WHERE m.manager_id = :manager_id
@@ -138,32 +150,13 @@ def get_market_vendors(market_manager_id: int):
             ).fetchall()
 
     except DBAPIError as error:
+
+        print(error)
         handle_error(error, db_error.FOREIGN_KEY_VIOLATION)
 
         raise(HTTPException(status_code=500, detail="Database error"))
     
-    return_list = []
-
-    print(vendors_per_market)
-
-    for market in vendors_per_market:
-        market_json = {
-            "market": market[0],
-            "vendors": []
-        }
-        for vendor in market[1].split(", "):
-            vendor_id, vendor_name = vendor.split(",")
-            market_json["vendors"].append(
-                {
-                    "id": int(vendor_id),
-                    "name": vendor_name
-                }
-            )
-        return_list.append(market_json)
-
-    print(return_list)
-    
-    return JSONResponse(status_code=200, content=return_list)
+    return JSONResponse(status_code=200, content=[vendors[0] for vendors in vendors_per_market])
 
 
 def get_market_options(market_manager_id: int):
