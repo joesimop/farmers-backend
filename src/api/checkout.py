@@ -48,7 +48,7 @@ class CheckoutSubmit(BaseModel):
     tokens: Optional[list[PaidToken]] = None
 
 
-@router.get("/options")
+@router.get("/market_date_options")
 def get_checkout_options(market_manager_id: int):
     """
     Gets the checkout options for a market manager.
@@ -64,7 +64,7 @@ def get_checkout_options(market_manager_id: int):
     
     return JSONResponse(status_code=200, content=return_list)
 
-@router.get("/{market_id}")
+@router.get("/checkout_details/{market_id}")
 def init_checkout(market_manager_id: int, market_id: int, market_date: datetime.date = datetime.date.today()):
     """
     Initializes the checkout process.
