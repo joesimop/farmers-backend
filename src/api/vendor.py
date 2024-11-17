@@ -5,6 +5,7 @@ from src.database_enum_types import VendorType
 from src.global_models import IdConcealer
 from typing import Optional
 from src.api_error_handling import handle_error, DatabaseError as db_error
+from src.models import vendors, vendor_producer_contacts
 
 import sqlalchemy
 import datetime
@@ -17,6 +18,11 @@ router = APIRouter(
     prefix="/vendor",
     tags=["vendor"],
 )
+
+class ProducerContact(BaseModel):
+    first_name: str
+    last_name: str
+    email: Optional[str] | None
 
 class Vendor(BaseModel):
     id: int
@@ -31,6 +37,7 @@ class Create_Vendor(BaseModel):
     current_cpc: Optional[str] = None
     cpc_expr: Optional[datetime.datetime] = None
     type: VendorType
+    producer_contacts: Optional[list[ProducerContact]] | None
 
 class VendorJoinMarket(BaseModel):
     vendor_id: int
@@ -57,24 +64,35 @@ def create_vendor(vendor: Create_Vendor):
     """
     try:
         with db.engine.begin() as conn:
-            vendor_id = conn.execute(
-                sqlalchemy.text(
+            result = conn.execute(
+                vendors.insert().values(
+                    business_name=vendor.business_name,
+                    current_cpc=vendor.current_cpc,
+                    cpc_expr=vendor.cpc_expr,
+                    type=vendor.type.value
+                ).returning(vendors.c.id)
+            ).fetchall()
             
-                    """
-                    INSERT INTO vendors (business_name, current_cpc, cpc_expr, type)
-                    VALUES (:business_name, :current_cpc, :cpc_expr, :type)
-                    RETURNING id
-                    """
-                    ),
+             #If the insert failed, raise a 500 error
+            if result[0] is None:
+                raise HTTPException(status_code=500, detail="Error inserting vendor")
+            
+            vendor_id = result[0][0]
 
-                    {
-                        "business_name": vendor.business_name,
-                        "current_cpc": vendor.current_cpc,
-                        "cpc_expr": vendor.cpc_expr,
-                        "type": vendor.type.value
-                    }
-
-            )
+            if (vendor.producer_contacts and vendor.producer_contacts != []):
+                conn.execute(
+                    vendor_producer_contacts.insert(), 
+                    [
+                        {
+                            "vendor_id": vendor_id,
+                            "firstname": producer.first_name, 
+                            "lastname": producer.last_name,
+                            "email":  producer.email
+                        } 
+                        for producer in vendor.producer_contacts
+                    ]
+                )
+            
 
     except DBAPIError as error:
         
@@ -82,12 +100,6 @@ def create_vendor(vendor: Create_Vendor):
                             db_error.UNIQUE_VIOLATION)
 
         raise(HTTPException(status_code=500, detail="Database error"))
-
-    #If we didn't get an id back, something went wrong
-    if vendor_id.inserted_primary_key is None:
-        raise(HTTPException(status_code=500, detail="Insert to database failed"))
-    else:
-        vendor_id = vendor_id.inserted_primary_key[0]
     
     # Notify the user if no cpc number or expiration was provided
     return_message = "Vendor created successfully."

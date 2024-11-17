@@ -10,17 +10,13 @@ from src.helpers import before_equal_to_today
 from src.CTE import market_tokens_cte, market_fees_cte, market_vendors_cte
 from src.api.market_manager import get_market_options
 from src.api_error_handling import handle_error, DatabaseError as db_error
+from src.models import vendor_checkouts, token_deltas, vendor_checkout_tokens
 
 import sqlalchemy
 import datetime
 from pydantic import BaseModel
 from src import database as db
 from sqlalchemy.exc import DBAPIError
-
-metadata = sqlalchemy.MetaData()
-vendor_checkouts = sqlalchemy.Table("vendor_checkouts", metadata, autoload_with=db.engine)
-token_deltas = sqlalchemy.Table("token_deltas", metadata, autoload_with=db.engine)
-vendor_checkout_tokens = sqlalchemy.Table("vendor_checkout_tokens", metadata, autoload_with=db.engine)
 
 router = APIRouter(
     prefix="/market_manager/{market_manager_id}/checkout",
@@ -59,7 +55,6 @@ def get_checkout_options(market_manager_id: int):
     Raises:
     - HTTPException: If the market manager or markets are not found, a 404 error is raised.
     """
-
     return_list = get_market_options(market_manager_id)
     
     return JSONResponse(status_code=200, content=return_list)
@@ -141,14 +136,14 @@ def submit_checkout(checkout_submit: CheckoutSubmit):
                     market_date=checkout_submit.market_date,
                     gross=checkout_submit.reported_gross,
                     fees_paid=checkout_submit.fees_paid
-                )
+                ).returning(vendor_checkouts.c.id)
             )
 
             #If the insert failed, raise a 500 error
-            if result.inserted_primary_key is None:
+            if result[0] is None:
                 raise HTTPException(status_code=500, detail="Error inserting vendor checkout")
             
-            vendor_checkout_id = result.inserted_primary_key[0]
+            vendor_checkout_id = result[0][0]
 
             #Insert the tokens used as deltas
             if checkout_submit.tokens is not None:
