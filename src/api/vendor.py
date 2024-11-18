@@ -143,17 +143,8 @@ def join_market(market_vendor: VendorJoinMarket):
             )
     except DBAPIError as error:
         
-        if isinstance(error.orig, UniqueViolation):
-            raise HTTPException(
-                status_code=400,
-                detail="Vendor already joined this market"
-            )
-        
-        if isinstance(error.orig, ForeignKeyViolation):
-            raise HTTPException(
-                status_code=400,
-                detail="Market or vendor does not exist"
-            )
+        handle_error(error, db_error.FOREIGN_KEY_VIOLATION,
+                            db_error.UNIQUE_VIOLATION)
 
         raise(HTTPException(status_code=500, detail="Database error"))
 
