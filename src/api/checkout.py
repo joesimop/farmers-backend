@@ -88,14 +88,16 @@ def init_checkout(market_manager_id: int, market_id: int, market_date: datetime.
                         SELECT json_agg(market_vendors_cte) AS vendors
                         FROM market_vendors_cte 
                     ),
+
                     fees_agg AS (
-                        SELECT json_agg(market_fees_cte) AS market_fees
+                        SELECT COALESCE(json_agg(market_fees_cte), '[]'::json) AS market_fees
                         FROM market_fees_cte
                     ),
+                    
                     tokens_agg AS (
-                        SELECT json_agg(market_tokens_cte) AS market_tokens
+                        SELECT COALESCE(json_agg(market_tokens_cte), '[]'::json) AS market_tokens
                         FROM market_tokens_cte
-                    )
+)
 
                     SELECT json_build_object('vendors', vendors_agg.vendors, 
                                             'market_fees', fees_agg.market_fees, 
@@ -110,10 +112,10 @@ def init_checkout(market_manager_id: int, market_id: int, market_date: datetime.
         handle_error(e, db_error.FOREIGN_KEY_VIOLATION)
         
         raise HTTPException(status_code=500, detail="Database error")
-
+    print(result[0][0])
     return JSONResponse(status_code=200, content=result[0][0])
 
-@router.post("/submit/")
+@router.post("/submit")
 def submit_checkout(checkout_submit: CheckoutSubmit):
     """
     Submits a checkout. Which involves the following steps:
@@ -137,7 +139,7 @@ def submit_checkout(checkout_submit: CheckoutSubmit):
                     gross=checkout_submit.reported_gross,
                     fees_paid=checkout_submit.fees_paid
                 ).returning(vendor_checkouts.c.id)
-            )
+            ).fetchall()
 
             #If the insert failed, raise a 500 error
             if result[0] is None:
