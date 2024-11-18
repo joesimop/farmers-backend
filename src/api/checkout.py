@@ -98,8 +98,8 @@ def init_checkout(market_manager_id: int, market_id: int, market_date: datetime.
                     )
 
                     SELECT json_build_object('vendors', vendors_agg.vendors, 
-                                            'fees', fees_agg.market_fees, 
-                                            'tokens', tokens_agg.market_tokens) as body
+                                            'market_fees', fees_agg.market_fees, 
+                                            'market_tokens', tokens_agg.market_tokens) as body
                     FROM vendors_agg, fees_agg, tokens_agg
                     """
                 ), {"market_id": market_id}
