@@ -133,7 +133,7 @@ def get_market_vendors(market_manager_id: int):
                             'vendors', json_agg(
                                 json_build_object(
                                     'id', v.id,
-                                    'name', v.business_name,
+                                    'business_name', v.business_name,
                                     'type', v.type,
                                     'current_cpc', v.current_cpc,
                                     'cpc_expr', v.cpc_expr
