@@ -89,11 +89,11 @@ def init_checkout(market_manager_id: int, market_id: int, market_date: datetime.
                         FROM market_vendors_cte 
                     ),
                     fees_agg AS (
-                        SELECT json_agg(market_fees_cte) AS fees
+                        SELECT json_agg(market_fees_cte) AS market_fees
                         FROM market_fees_cte
                     ),
                     tokens_agg AS (
-                        SELECT json_agg(market_tokens_cte) AS tokens
+                        SELECT json_agg(market_tokens_cte) AS market_tokens
                         FROM market_tokens_cte
                     )
 
