@@ -108,8 +108,41 @@ def get_market_manager_markets(market_manager_id: int):
     
     return JSONResponse(status_code=200, content=return_list)
 
-@router.get("/{market_manager_id}/vendors_per_market")
-def get_market_vendors(market_manager_id: int):
+@router.get("/{market_manager_id}/market_options")
+def get_market_options(market_manager_id: int):
+
+    try:
+        with db.engine.begin() as conn:
+            market_options = conn.execute(
+                sqlalchemy.text(
+                    f"""
+                    SELECT 
+                        json_build_object(
+                            'market', m.name,
+                            'market_id', m.id
+                        ) as markets
+                    FROM markets as m
+                    WHERE m.manager_id = :manager_id 
+                    """
+                ), {"manager_id": market_manager_id}
+            ).fetchall()
+
+    except DBAPIError as error:
+
+        print(error)
+        handle_error(error, db_error.FOREIGN_KEY_VIOLATION)
+
+        raise(HTTPException(status_code=500, detail="Database error"))
+    
+    # Extract markets and add All markets
+    market_options = [market[0] for market in market_options]
+    market_options.insert(0, {"market": "All Markets", "market_id": 0})
+
+    # Return the response with the updated options
+    return JSONResponse(status_code=200, content=market_options)
+
+@router.get("/{market_manager_id}/vendors")
+def get_market_vendors(market_manager_id: int, market_id: int):
     """
     Gets all vendors for each market managed by a market manager.
 
@@ -122,6 +155,11 @@ def get_market_vendors(market_manager_id: int):
     Raises:
     - HTTPException: If there is an error during database interaction, it is caught, and an appropriate error message is printed.
     """
+
+    where_clause = ""
+    if market_id != 0:
+        where_clause += " AND mv.market_id = :market_id"
+
     try:
         with db.engine.begin() as conn:
             vendors_per_market = conn.execute(
@@ -143,10 +181,10 @@ def get_market_vendors(market_manager_id: int):
                     FROM vendors AS v
                     JOIN market_vendors mv ON v.id = mv.vendor_id
                     JOIN markets m ON mv.market_id = m.id
-                    WHERE m.manager_id = :manager_id
+                    WHERE m.manager_id = :manager_id{where_clause}
                     GROUP BY m.id
                     """
-                ), {"manager_id": market_manager_id}
+                ), {"manager_id": market_manager_id, "market_id": market_id}
             ).fetchall()
 
     except DBAPIError as error:
@@ -159,7 +197,7 @@ def get_market_vendors(market_manager_id: int):
     return JSONResponse(status_code=200, content=[vendors[0] for vendors in vendors_per_market])
 
 
-def get_market_options(market_manager_id: int):
+def get_market_date_options(market_manager_id: int, includeToday: bool | None = True):
     """
     Gets the market options for a market manager.
     
@@ -237,12 +275,12 @@ def get_market_options(market_manager_id: int):
         #it may not be in the top 10 most recent dates
         if market[2] is not None:                                                   #Case where the market has no days of operation
             market_days = market[2].split(",")
-            if today_dow.value in market_days:
+            if today_dow.value in market_days and includeToday:
                 market_map[market[0]]["market_dates"].append(today_string)
 
     #Append all dates recorded in the database
     for date in market_dates:
-        if date[1] != today_date:                                                    #Don't add today's date again
+        if date[1] != today_date:                                     #Don't add today's date again
             market_map[date[0]]["market_dates"].append(date[1].isoformat())
 
     #Convert the map to a list

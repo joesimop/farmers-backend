@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from psycopg2.errors import  ForeignKeyViolation
-from src.api.market_manager import get_market_options
+from src.api.market_manager import get_market_date_options
 from src.order_by import user_sortable_endpoint, SortOption, SortDirection
 
 import sqlalchemy
@@ -22,7 +22,7 @@ def get_report_options(market_manager_id: int):
     Exact same as get_checkout_options, but adds a market called "All Vendors" with market_id 0.
     """
 
-    return_list = get_market_options(market_manager_id)
+    return_list = get_market_date_options(market_manager_id, False)
     return_list.insert(0, {"market_id": 0, "market_name": "All Markets", "market_dates": []})
 
     return JSONResponse(status_code=200, content=return_list)
@@ -30,7 +30,7 @@ def get_report_options(market_manager_id: int):
 @router.get("/report")
 @user_sortable_endpoint(SortOption.MarketDate, SortOption.VendorName, SortOption.Gross, SortOption.FeesPaid)
 def get_report(market_manager_id: int,
-               market_id: int | None = None, 
+               market_id: int, 
                market_date: datetime.date | None = None, 
                sort_by: SortOption | None = SortOption.MarketDate, 
                sort_direction: SortDirection | None = SortDirection.Descending):
@@ -39,7 +39,7 @@ def get_report(market_manager_id: int,
 
     #If market_id or date is None, then use all valid entries
     where_clause = ""
-    if market_id is not None:
+    if market_id != 0:
         where_clause += " AND mv.market_id = :market_id"
     if market_date is not None:
         where_clause += " AND market_date = :market_date"

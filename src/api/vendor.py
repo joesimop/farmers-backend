@@ -37,7 +37,7 @@ class Create_Vendor(BaseModel):
     current_cpc: Optional[str] = None
     cpc_expr: Optional[datetime.datetime] = None
     type: VendorType
-    producer_contacts: Optional[list[ProducerContact]] | None
+    producer_contacts: Optional[list[ProducerContact]] = None
 
 class VendorJoinMarket(BaseModel):
     vendor_id: int
