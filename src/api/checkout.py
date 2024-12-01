@@ -8,7 +8,7 @@ from src.global_models import MarketVendorFee
 from src.api.vendor import Vendor
 from src.helpers import before_equal_to_today
 from src.CTE import market_tokens_cte, market_fees_cte, market_vendors_cte
-from src.api.market_manager import get_market_options
+from src.api.market_manager import get_market_date_options
 from src.api_error_handling import handle_error, DatabaseError as db_error
 from src.models import vendor_checkouts, token_deltas, vendor_checkout_tokens
 
@@ -55,7 +55,7 @@ def get_checkout_options(market_manager_id: int):
     Raises:
     - HTTPException: If the market manager or markets are not found, a 404 error is raised.
     """
-    return_list = get_market_options(market_manager_id)
+    return_list = get_market_date_options(market_manager_id)
     
     return JSONResponse(status_code=200, content=return_list)
 
