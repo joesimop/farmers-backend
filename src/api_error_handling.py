@@ -42,3 +42,4 @@ def handle_error(err, *types: list[DatabaseError]):
         elif error_type == DatabaseError.CHECK_VIOLATION:
             check_violation_exception(err.orig)
         
+        

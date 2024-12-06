@@ -148,16 +148,19 @@ def submit_checkout(checkout_submit: CheckoutSubmit):
             vendor_checkout_id = result[0][0]
 
             #Insert the tokens used as deltas
-            if checkout_submit.tokens is not None:
+            if checkout_submit.tokens is not None and \
+                any(token.count > 0 for token in checkout_submit.tokens):
+
                 token_delta_ids = conn.execute(
                     token_deltas.insert().returning(token_deltas.c.id), 
                     [
                         {
                             "market_token": token.market_token_id, 
                             "transactor": TokenTransactorType.Vendor.value,
-                            "count":  token.count
+                            "delta":  token.count
                         } 
                         for token in checkout_submit.tokens
+                        if token.count > 0
                     ]
                 ).fetchall()
 

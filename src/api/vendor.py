@@ -5,7 +5,7 @@ from src.database_enum_types import VendorType
 from src.global_models import IdConcealer
 from typing import Optional
 from src.api_error_handling import handle_error, DatabaseError as db_error
-from src.models import vendors, vendor_producer_contacts
+from src.models import vendors, vendor_producer_contacts, market_vendors
 
 import sqlalchemy
 import datetime
@@ -41,7 +41,7 @@ class Create_Vendor(BaseModel):
 
 class VendorJoinMarket(BaseModel):
     vendor_id: int
-    market_id: int
+    market_ids: list[int]
 
 
 @router.post("/create")
@@ -106,7 +106,7 @@ def create_vendor(vendor: Create_Vendor):
 
     return JSONResponse(status_code=201, content={"id": vendor_id, "detail": return_message})
 
-@router.post("/join_market")
+@router.post("/join_markets")
 def join_market(market_vendor: VendorJoinMarket):
     """
     Allows a vendor to join a market.
@@ -127,20 +127,16 @@ def join_market(market_vendor: VendorJoinMarket):
     try:
         with db.engine.begin() as conn:
             conn.execute(
-                sqlalchemy.text(
+                 market_vendors.insert(), 
+                    [
+                        {
+                            "market_id": marketId,
+                            "vendor_id": market_vendor.vendor_id,
+                        } 
+                        for marketId in market_vendor.market_ids
+                    ]
+                )
             
-                    """
-                    INSERT INTO market_vendors (market_id, vendor_id)
-                    VALUES (:market_id, :vendor_id)
-                    """
-                    ),
-
-                    {
-                        "market_id": market_vendor.market_id,
-                        "vendor_id": market_vendor.vendor_id
-                    }
-
-            )
     except DBAPIError as error:
         
         handle_error(error, db_error.FOREIGN_KEY_VIOLATION,

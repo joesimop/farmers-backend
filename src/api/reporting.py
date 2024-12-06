@@ -50,31 +50,46 @@ def get_report(market_manager_id: int,
             reports = conn.execute(
                 sqlalchemy.text(
                     f"""
+                    WITH market_token_deltas AS (
+                        SELECT 
+                            vc.id AS vendor_checkout_id,
+                            mt.id AS token_id,
+                            mt.token_type,
+                            mt.per_dollar_value,
+                            COALESCE(SUM(td.delta), 0) AS token_delta
+                        FROM vendor_checkouts vc
+                        JOIN market_vendors mv ON vc.market_vendor = mv.id
+                        JOIN market_tokens mt ON mt.market_id = mv.market_id
+                        LEFT JOIN vendor_checkout_tokens vct ON vct.vendor_checkout = vc.id
+                        LEFT JOIN token_deltas td ON vct.token_delta = td.id AND td.market_token = mt.id
+                        GROUP BY vc.id, mt.id, mt.token_type, mt.per_dollar_value
+                    )
+
                     SELECT 
                         json_build_object(
                             'id', vc.id,
                             'business_name', v.business_name, 
+                            'vendor_type', v.type,
                             'gross', vc.gross, 
                             'fees_paid', vc.fees_paid,
                             'market_date', vc.market_date,
-                            'tokens', COALESCE(
-                                        json_agg(json_build_object(
-                                            'type', mt.token_type, 
-                                            'count', td.delta
-                                        )
-                                    ) FILTER (WHERE mt.id IS NOT NULL) , '[]'::json)
+                            'tokens', json_agg(
+                                json_build_object(
+                                    'type', mtd.token_type, 
+                                    'count', mtd.token_delta,
+                                    'per_dollar_value', mtd.per_dollar_value
+                                ) ORDER BY mtd.token_id
+                            )
                         ) AS checkouts
                     FROM vendor_checkouts AS vc
                     JOIN market_vendors AS mv ON vc.market_vendor = mv.id
                     JOIN vendors AS v ON mv.vendor_id = v.id
-                    JOIN markets AS m on mv.market_id = m.id
-                    LEFT JOIN vendor_checkout_tokens AS vct ON vc.id = vct.vendor_checkout
-                    LEFT JOIN token_deltas AS td ON vct.token_delta = td.id
-                    LEFT JOIN market_tokens AS mt ON td.market_token = mt.id
-                    WHERE m.manager_id = :market_manager_id{where_clause}
-                    GROUP BY vc.id, v.business_name, vc.gross, vc.fees_paid, vc.market_date
+                    JOIN markets AS m ON mv.market_id = m.id
+                    JOIN market_token_deltas mtd ON mtd.vendor_checkout_id = vc.id
+                    WHERE m.manager_id = :market_manager_id {where_clause}
+                    GROUP BY vc.id, v.business_name, v.type, vc.gross, vc.fees_paid, vc.market_date
                     ORDER BY {sort_by} {sort_direction}
-                    """
+                   """
                 ), {"market_manager_id": market_manager_id,
                     "market_id": market_id, 
                     "market_date": market_date

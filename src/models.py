@@ -7,3 +7,4 @@ token_deltas = sqlalchemy.Table("token_deltas", metadata, autoload_with=db.engin
 vendor_checkout_tokens = sqlalchemy.Table("vendor_checkout_tokens", metadata, autoload_with=db.engine)
 vendors = sqlalchemy.Table("vendors", metadata, autoload_with=db.engine)
 vendor_producer_contacts = sqlalchemy.Table("vendor_producer_contacts", metadata, autoload_with=db.engine)
+market_vendors = sqlalchemy.Table("market_vendors", metadata, autoload_with=db.engine)
