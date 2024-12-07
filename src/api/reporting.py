@@ -49,7 +49,7 @@ def get_report(market_manager_id: int,
         with db.engine.begin() as conn:
             reports = conn.execute(
                 sqlalchemy.text(
-                    f"""
+                    f""" --sql 
                     WITH market_token_deltas AS (
                         SELECT 
                             vc.id AS vendor_checkout_id,
@@ -63,32 +63,80 @@ def get_report(market_manager_id: int,
                         LEFT JOIN vendor_checkout_tokens vct ON vct.vendor_checkout = vc.id
                         LEFT JOIN token_deltas td ON vct.token_delta = td.id AND td.market_token = mt.id
                         GROUP BY vc.id, mt.id, mt.token_type, mt.per_dollar_value
+                    ),
+
+                    checkouts_cte AS (
+                        SELECT
+                            vc.id AS checkout_id,
+                            v.business_name,
+                            v.type AS vendor_type,
+                            vc.gross,
+                            vc.fees_paid,
+                            vc.market_date,
+                            mtd.token_type,
+                            mtd.token_delta,
+                            mtd.per_dollar_value
+                        FROM vendor_checkouts AS vc
+                        JOIN market_vendors mv ON vc.market_vendor = mv.id
+                        JOIN vendors AS v ON mv.vendor_id = v.id
+                        JOIN markets AS m ON mv.market_id = m.id
+                        JOIN market_token_deltas mtd ON mtd.vendor_checkout_id = vc.id
+                        WHERE m.manager_id = :market_manager_id {where_clause}
+                    ),
+
+                    aggregated_totals AS (
+                        SELECT
+                            token_type,
+                            per_dollar_value,
+                            SUM(token_delta) AS total_token_delta,
+                            SUM(fees_paid) AS total_fees_paid
+                        FROM checkouts_cte
+                        GROUP BY token_type, per_dollar_value
+                    ),
+
+                    final_data AS (
+                        SELECT 
+                            JSON_BUILD_OBJECT(
+                                'business_name', business_name,
+                                'vendor_type', vendor_type,
+                                'gross', gross,
+                                'fees_paid', fees_paid,
+                                'market_date', market_date,
+                                'tokens', json_agg(
+                                    JSON_BUILD_OBJECT(
+                                    'type', token_type,
+                                    'count', token_delta,
+                                    'per_dollar_value', per_dollar_value
+                                )
+                                )
+                            ) AS checkout_data
+                        FROM checkouts_cte
+                        GROUP BY business_name, vendor_type, gross, fees_paid, market_date
+                        ORDER BY {sort_by} {sort_direction}
+                    ),
+
+                    totals_data AS (
+                        SELECT
+                            JSON_BUILD_OBJECT(
+                                'fees_paid', COALESCE(MAX(total_fees_paid), 0),
+                                'tokens', COALESCE(
+                                    JSON_AGG(
+                                        JSON_BUILD_OBJECT(
+                                            'type', token_type,
+                                            'count', total_token_delta,
+                                            'per_dollar_value', per_dollar_value
+                                        )
+                                    ),
+                                    '[]'::json
+                                )
+                            ) AS totals
+                        FROM aggregated_totals
                     )
 
                     SELECT 
-                        json_build_object(
-                            'id', vc.id,
-                            'business_name', v.business_name, 
-                            'vendor_type', v.type,
-                            'gross', vc.gross, 
-                            'fees_paid', vc.fees_paid,
-                            'market_date', vc.market_date,
-                            'tokens', json_agg(
-                                json_build_object(
-                                    'type', mtd.token_type, 
-                                    'count', mtd.token_delta,
-                                    'per_dollar_value', mtd.per_dollar_value
-                                ) ORDER BY mtd.token_id
-                            )
-                        ) AS checkouts
-                    FROM vendor_checkouts AS vc
-                    JOIN market_vendors AS mv ON vc.market_vendor = mv.id
-                    JOIN vendors AS v ON mv.vendor_id = v.id
-                    JOIN markets AS m ON mv.market_id = m.id
-                    JOIN market_token_deltas mtd ON mtd.vendor_checkout_id = vc.id
-                    WHERE m.manager_id = :market_manager_id {where_clause}
-                    GROUP BY vc.id, v.business_name, v.type, vc.gross, vc.fees_paid, vc.market_date
-                    ORDER BY {sort_by} {sort_direction}
+                        (SELECT COALESCE(JSON_AGG(checkout_data), '[]'::json) FROM final_data) AS checkouts,
+                        (SELECT totals FROM totals_data) AS totals;
+
                    """
                 ), {"market_manager_id": market_manager_id,
                     "market_id": market_id, 
@@ -100,5 +148,7 @@ def get_report(market_manager_id: int,
         print(error)
         raise(HTTPException(status_code=500, detail="Database error"))
     
-
-    return JSONResponse(status_code=200, content=[report[0] for report in reports])
+    checkouts = reports[0][0]
+    totals = reports[0][1]
+    return_content = {"reports": checkouts, "totals": totals}
+    return JSONResponse(status_code=200, content=return_content)
